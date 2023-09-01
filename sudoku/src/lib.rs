@@ -1,7 +1,7 @@
 pub mod sudoku {
     use csv;
     use serde::Deserialize;
-    use std::{fmt, result, vec};
+    use std::{fmt, vec};
 
     #[derive(Debug, Deserialize)]
     struct CsvRecords {

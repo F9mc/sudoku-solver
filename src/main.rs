@@ -1,14 +1,14 @@
-use sudoku::sudoku::{Cell, Sudoku};
+use sudoku::sudoku::Sudoku;
 
 fn main() {
     let mut board: Sudoku =
         sudoku::sudoku::Sudoku::read("tests/real-board.csv".to_string()).unwrap();
-    board.solve();
+    board.solve().unwrap();
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{cell, vec};
+    use std::vec;
 
     use sudoku::sudoku::{Cell, Sudoku};
 
