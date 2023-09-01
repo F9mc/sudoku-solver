@@ -2,7 +2,7 @@ use sudoku::sudoku::Sudoku;
 
 fn main() {
     let mut board: Sudoku =
-        sudoku::sudoku::Sudoku::read("tests/real-board.csv".to_string()).unwrap();
+        sudoku::sudoku::Sudoku::read("tests/expert-board.csv".to_string()).unwrap();
     board.solve().unwrap();
 }
 

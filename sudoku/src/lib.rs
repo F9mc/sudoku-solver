@@ -36,6 +36,14 @@ pub mod sudoku {
                 _ => Err("Impossible to remove value from this cell".to_string()),
             }
         }
+
+        fn len(&self) -> usize {
+            match self {
+                Cell::UnknownState => 0,
+                Cell::FinalValue(_) => 1,
+                Cell::PossibleValues(values) => values.len(),
+            }
+        }
     }
 
     impl Sudoku {
@@ -77,8 +85,13 @@ pub mod sudoku {
                         self.matrix[x][y] = Cell::FinalValue(values[0])
                     }
                     _ => {
-                        println!("Possibles values {:?} set in {x}-{y}", values);
-                        self.matrix[x][y] = Cell::PossibleValues(values)
+                        let old_value = self.get_cell(x, y).unwrap();
+                        if old_value.len() == values.len() {
+                            return Err("No changes where made".to_string());
+                        } else {
+                            println!("Possibles values {:?} set in {x}-{y}", values);
+                            self.matrix[x][y] = Cell::PossibleValues(values)
+                        }
                     }
                 }
                 Ok(())
@@ -194,6 +207,7 @@ pub mod sudoku {
             for l in 0..100 {
                 for i in 0..self.size {
                     for j in 0..self.size {
+                        let mut updated: bool = false;
                         match self.get_cell(i, j) {
                             Some(Cell::FinalValue(_)) => println!("Value {i} - {j} already set"),
                             None => println!("Error getting value {i}-{j}"),
@@ -210,7 +224,15 @@ pub mod sudoku {
                                         possibles_values.push(k)
                                     }
                                 }
-                                self.set_cell(i, j, possibles_values).unwrap();
+                                match self.set_cell(i, j, possibles_values) {
+                                    Ok(()) => updated = true,
+                                    _ => (),
+                                }
+
+                                if !updated {
+                                    println!("Stuck ! Have to tage a guess");
+                                    self.take_guess().unwrap();
+                                }
                             }
                         }
                     }
@@ -236,6 +258,25 @@ pub mod sudoku {
                 }
             }
             true
+        }
+
+        fn take_guess(&mut self) -> Result<(), String> {
+            for min in 2..9 {
+                for i in 0..self.size {
+                    for j in 0..self.size {
+                        match self.get_cell(i, j) {
+                            Some(Cell::PossibleValues(values)) => {
+                                if values.len() == min {
+                                    self.set_cell(i, j, vec![values[0]]).unwrap();
+                                    return Ok(());
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+            }
+            return Err("No guess where made".to_string());
         }
     }
 
