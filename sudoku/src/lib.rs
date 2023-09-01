@@ -1,7 +1,7 @@
 pub mod sudoku {
     use csv;
     use serde::Deserialize;
-    use std::{fmt, vec};
+    use std::{fmt, result, vec};
 
     #[derive(Debug, Deserialize)]
     struct CsvRecords {
@@ -68,9 +68,19 @@ pub mod sudoku {
             }
         }
 
-        pub fn set_cell(&mut self, x: usize, y: usize, value: Cell) -> Result<(), String> {
+        pub fn set_cell(&mut self, x: usize, y: usize, values: Vec<usize>) -> Result<(), String> {
             if x < self.size && y < self.size {
-                self.matrix[x][y] = value;
+                match values.len() {
+                    0 => return Err("No values where specified".to_string()),
+                    1 => {
+                        println!("Final value {:} found in {x}-{y} ", values[0]);
+                        self.matrix[x][y] = Cell::FinalValue(values[0])
+                    }
+                    _ => {
+                        println!("Possibles values {:?} set in {x}-{y}", values);
+                        self.matrix[x][y] = Cell::PossibleValues(values)
+                    }
+                }
                 Ok(())
             } else {
                 Err("The arguments x and y are not correct".to_string())
@@ -89,7 +99,7 @@ pub mod sudoku {
             for result in rdr.deserialize() {
                 let record: CsvRecords = result.unwrap();
                 board
-                    .set_cell(record.x, record.y, Cell::FinalValue(record.value))
+                    .set_cell(record.x, record.y, vec![record.value])
                     .unwrap();
             }
             Ok(board)
@@ -125,16 +135,12 @@ pub mod sudoku {
                 for i in 0..self.size {
                     match self.get_cell(row, i) {
                         Some(Cell::FinalValue(v)) => result.push(*v),
-                        Some(Cell::PossibleValues(values)) => {
-                            for v in values.iter() {
-                                result.push(*v)
-                            }
-                        }
-                        _ => print!("Value {i}-{row} not found"),
+                        _ => (),
                     }
                 }
                 result.sort();
                 result.dedup();
+                println!("Value of row {row} found: {:?}", result);
                 Ok(result)
             } else {
                 Err("Out of bound".to_string())
@@ -147,16 +153,12 @@ pub mod sudoku {
                 for i in 0..self.size {
                     match self.get_cell(i, col) {
                         Some(Cell::FinalValue(v)) => result.push(*v),
-                        Some(Cell::PossibleValues(values)) => {
-                            for v in values.iter() {
-                                result.push(*v)
-                            }
-                        }
-                        _ => print!("Value {i}-{col} not found"),
+                        _ => (),
                     }
                 }
                 result.sort();
                 result.dedup();
+                println!("Value of col {col} found: {:?}", result);
                 Ok(result)
             } else {
                 Err("Out of bound".to_string())
@@ -172,25 +174,68 @@ pub mod sudoku {
                     for j in y_start..y_start + 3 {
                         match self.get_cell(i, j) {
                             Some(Cell::FinalValue(v)) => result.push(*v),
-                            Some(Cell::PossibleValues(values)) => {
-                                for v in values.iter() {
-                                    result.push(*v)
-                                }
-                            }
                             _ => (),
                         }
                     }
                 }
                 result.sort();
                 result.dedup();
+                println!("Value of region found: {:?}", result);
                 Ok(result)
             } else {
                 Err("Out of bound".to_string())
             }
         }
 
-        pub fn solve(&self) -> Result<Sudoku, String> {
-            todo!()
+        pub fn solve(&mut self) -> Result<(), String> {
+            println!("Setp 0: \n{:#}", self);
+
+            // Initialize
+            for l in 0..100 {
+                for i in 0..self.size {
+                    for j in 0..self.size {
+                        match self.get_cell(i, j) {
+                            Some(Cell::FinalValue(_)) => println!("Value {i} - {j} already set"),
+                            None => println!("Error getting value {i}-{j}"),
+                            _ => {
+                                let mut values = Vec::new();
+                                values.extend(self.get_col(j).unwrap());
+                                values.extend(self.get_row(i).unwrap());
+                                values.extend(self.get_region(i, j).unwrap());
+                                values.dedup();
+                                println!("Found values {:?} already used", values);
+                                let mut possibles_values: Vec<usize> = Vec::new();
+                                for k in 1..self.size + 1 {
+                                    if !values.contains(&k) {
+                                        possibles_values.push(k)
+                                    }
+                                }
+                                self.set_cell(i, j, possibles_values).unwrap();
+                            }
+                        }
+                    }
+                }
+                if self.is_solved() {
+                    println!("Solved in {l} steps\nSolution:\n{:#}", self);
+                    break;
+                } else {
+                    println!("After step {l}:\n{:#}", self);
+                }
+            }
+            Ok(())
+        }
+
+        pub fn is_solved(&self) -> bool {
+            for i in 0..self.size {
+                for j in 0..self.size {
+                    match self.get_cell(i, j) {
+                        Some(Cell::PossibleValues(_)) => return false,
+                        Some(Cell::UnknownState) => return false,
+                        _ => (),
+                    }
+                }
+            }
+            true
         }
     }
 
